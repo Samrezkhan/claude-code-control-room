@@ -79,7 +79,7 @@ side. A client project and a personal project can share the screen without shari
 You need Python 3.9 or newer and Claude Code.
 
 ```bash
-git clone https://github.com/<you>/claude-code-control-room.git
+git clone https://github.com/Samrezkhan/claude-code-control-room.git
 cd claude-code-control-room/control-room
 python install.py --autostart --name "Your name"
 ```
