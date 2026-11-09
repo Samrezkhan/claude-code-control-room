@@ -79,13 +79,24 @@ def main():
               (", and when you log in." if a.autostart else "."))
 
 
+def mine(path):
+    """Only touch an autostart entry that starts this copy of the Control Room."""
+    try:
+        return str(SERVER) in path.read_text(encoding="utf-8", errors="replace").replace('""', '"')
+    except Exception:
+        return False
+
+
 def autostart(remove, name):
     pyw = pathlib.Path(PY).with_name("pythonw.exe")
     extra = ' --name "%s"' % name if name else ""
     if sys.platform == "win32":
         startup = pathlib.Path(os.environ["APPDATA"]) / "Microsoft/Windows/Start Menu/Programs/Startup/Control Room.vbs"
         if remove:
-            startup.unlink(missing_ok=True)
+            if startup.exists() and mine(startup):
+                startup.unlink()
+            else:
+                print("left alone (not this copy):", startup)
         else:
             exe = pyw if pyw.exists() else pathlib.Path(PY)
             startup.write_text('Set s = CreateObject("WScript.Shell")\r\ns.Run """%s"" ""%s"" --detach%s", 0, False\r\n'
@@ -94,7 +105,10 @@ def autostart(remove, name):
     elif sys.platform == "darwin":
         plist = pathlib.Path.home() / "Library/LaunchAgents/local.control-room.plist"
         if remove:
-            plist.unlink(missing_ok=True)
+            if plist.exists() and mine(plist):
+                plist.unlink()
+            else:
+                print("left alone (not this copy):", plist)
         else:
             args = "".join("<string>%s</string>" % x for x in [PY, str(SERVER), "--detach"] + (["--name", name] if name else []))
             plist.write_text('<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0"><dict><key>Label</key>'
@@ -104,7 +118,10 @@ def autostart(remove, name):
     else:
         desk = pathlib.Path.home() / ".config/autostart/control-room.desktop"
         if remove:
-            desk.unlink(missing_ok=True)
+            if desk.exists() and mine(desk):
+                desk.unlink()
+            else:
+                print("left alone (not this copy):", desk)
         else:
             desk.parent.mkdir(parents=True, exist_ok=True)
             desk.write_text("[Desktop Entry]\nType=Application\nName=Control Room\nExec=%s %s --detach%s\n"
