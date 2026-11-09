@@ -1,0 +1,64 @@
+{
+  "project": "Bakery Website",
+  "title": "Bakery Website",
+  "summary": "A small shop site for a neighbourhood bakery: menu, ordering page, local search.",
+  "newSince": [
+    "Menu page published",
+    "Photos for the cakes page are ready to review"
+  ],
+  "nodes": [
+    {
+      "name": "Pages",
+      "note": "8 pages planned",
+      "children": [
+        {
+          "name": "Home page",
+          "state": "done",
+          "note": "live"
+        },
+        {
+          "name": "Menu page",
+          "state": "done",
+          "note": "live, with prices from the owner's list"
+        },
+        {
+          "name": "Cakes page",
+          "state": "waiting",
+          "priority": "now",
+          "note": "photos ready; pick 6 of the 12",
+          "detail": "Open the photo sheet, choose six, and reply with their numbers.",
+          "links": [
+            {
+              "label": "Open the photo sheet",
+              "path": "docs/status.json"
+            }
+          ]
+        },
+        {
+          "name": "Ordering page",
+          "state": "running",
+          "note": "form being built"
+        },
+        {
+          "name": "About page",
+          "state": "planned"
+        }
+      ]
+    },
+    {
+      "name": "Local search",
+      "children": [
+        {
+          "name": "Business details checked",
+          "state": "done"
+        },
+        {
+          "name": "Opening hours",
+          "state": "stuck",
+          "note": "two different hours found online",
+          "detail": "The website says 7 am and the shop sign says 8 am. Which is right?"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "project": "App Launch",
+  "title": "Mobile App Launch",
+  "summary": "Getting a habit-tracker app ready for the store.",
+  "newSince": [],
+  "nodes": [
+    {
+      "name": "Store listing",
+      "children": [
+        {
+          "name": "Screenshots",
+          "state": "running",
+          "note": "5 of 8 made",
+          "done": 5,
+          "total": 8
+        },
+        {
+          "name": "Description",
+          "state": "done"
+        },
+        {
+          "name": "Privacy answers",
+          "state": "waiting",
+          "note": "one question about analytics needs your answer"
+        }
+      ]
+    },
+    {
+      "name": "Testing",
+      "children": [
+        {
+          "name": "Beta testers invited",
+          "state": "done",
+          "note": "40 people"
+        },
+        {
+          "name": "Crash on older phones",
+          "state": "stuck",
+          "priority": "soon",
+          "note": "happens on one phone model",
+          "detail": "Needs a test phone of that model; none available yet."
+        }
+      ]
+    }
+  ]
+}

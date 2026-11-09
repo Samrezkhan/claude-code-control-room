@@ -1,0 +1,63 @@
+{
+  "project": "Podcast Studio",
+  "title": "Podcast Studio",
+  "summary": "Weekly interview show: research, script, record, edit, publish.",
+  "newSince": [
+    "Episode 12 edited"
+  ],
+  "nodes": [
+    {
+      "name": "Episode 12",
+      "done": 4,
+      "total": 5,
+      "children": [
+        {
+          "name": "Research",
+          "state": "done"
+        },
+        {
+          "name": "Script",
+          "state": "done"
+        },
+        {
+          "name": "Recording",
+          "state": "done"
+        },
+        {
+          "name": "Edit",
+          "state": "done"
+        },
+        {
+          "name": "Publish",
+          "state": "waiting",
+          "note": "ready; needs your go",
+          "detail": "Say go and it is scheduled for Thursday 9 am."
+        }
+      ]
+    },
+    {
+      "name": "Episode 13",
+      "children": [
+        {
+          "name": "Guest research",
+          "state": "running",
+          "note": "3 guests shortlisted"
+        },
+        {
+          "name": "Script",
+          "state": "planned"
+        }
+      ]
+    },
+    {
+      "name": "Channel growth",
+      "children": [
+        {
+          "name": "Shorts from episode 11",
+          "state": "stopped",
+          "note": "on hold until the new intro is made"
+        }
+      ]
+    }
+  ]
+}
