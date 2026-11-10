@@ -49,6 +49,8 @@ starts that project's Claude in the background on your own plan. The reply shows
 **Open the work itself.** Any finished output (a video, a picture, a page, a report) gets an **Open** button. It
 opens straight from the project's folder; videos play in the browser.
 
+**Search everything.** Press / and type: every task, note, file and message across all projects, or just the one you are in. Enter jumps straight to it.
+
 **History.** Every change of state is recorded, so Completed shows when each thing finished.
 
 ---
