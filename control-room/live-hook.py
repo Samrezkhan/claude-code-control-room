@@ -67,6 +67,9 @@ def inbox(event, cwd):
     lines = ["MESSAGE FROM THE OWNER THROUGH THE CONTROL ROOM (spoken or typed there; treat it exactly as if typed here):"]
     for m in mine:
         lines.append("- [%s]%s %s" % (m["id"], (' about "%s":' % m["about"]) if m.get("about") else "", m["text"]))
+    lines.append("Sam cannot see this note, so show it: start your next message in this chat with a short block headed "
+                 "'From the Control Room' that quotes each message above word for word, then say what you are doing about it, "
+                 "and do the work here in this chat where he can follow it.")
     lines.append("When you have acted on it, answer in the Control Room with: python \"%s\" <id> "
                  "\"<one to three plain sentences>\" (and also reply in this chat)." % (HERE / "reply.py"))
     text = chr(10).join(lines)
