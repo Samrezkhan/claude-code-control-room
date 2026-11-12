@@ -195,6 +195,8 @@ h2 .count{color:var(--muted);font-weight:450}
 .item .d{font-size:13px;color:var(--ink-2);padding-left:24px}
 .item .w{font-size:12.5px;color:var(--muted);padding-left:24px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .ptag{font-weight:600;color:var(--ink-2)}
+.ts{display:block;font-size:12.5px;color:var(--muted);margin-top:3px;font-variant-numeric:tabular-nums}
+.ts b{font-weight:600;color:var(--ink-2)}
 .when{margin-left:auto;font-variant-numeric:tabular-nums;white-space:nowrap}
 .more{all:unset;cursor:pointer;font-size:13px;color:var(--accent);font-weight:550;padding:6px 6px 2px}
 .more:hover{text-decoration:underline;text-underline-offset:3px}
@@ -301,6 +303,14 @@ const EYE='<svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><p
 const OPEN='<svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true"><path d="M8 2h4v4M12 2L6.5 7.5M10.5 8.5V11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1h2.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 function prefs(){const p=data.prefs||{};return {order:p.order||[],hidden:p.hidden||[],prio:p.prio||{}}}
 const PRIO_ORDER=['now','soon',null,'later'],PRIO_WORD={now:'Now',soon:'Soon',later:'Later'};
+function dt(ts){const d=new Date(ts*1000),n=new Date();const same=d.toDateString()===n.toDateString();
+  const t=d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}).toLowerCase().replace(' ',' ');
+  return same?'today '+t:d.toLocaleDateString([], {month:'short',day:'numeric'})+(d.getFullYear()!==n.getFullYear()?' '+d.getFullYear():'')+', '+t}
+function timesOf(id){return (data.times||{})[id]}
+function stamp(id){const r=timesOf(id);if(!r)return'';
+  const add=r.est?`Added on or before <b>${esc(dt(r.added).split(',')[0])}</b>`:`Added <b>${esc(dt(r.added))}</b> (${ago(r.added)})`;
+  const ch=r.updated&&Math.abs(r.updated-r.added)>90?` · Last change <b>${esc(dt(r.updated))}</b> (${ago(r.updated)})`:'';
+  return `<span class="ts">${add}${ch}</span>`}
 function itemId(x){return x.p.project+'|'+[...x.path,x.n.name].join(' > ')}
 /* The owner's choice wins; otherwise the priority the project's own Claude wrote in its status. */
 function prioOf(x){const v=prefs().prio[itemId(x)];return v!==undefined?v:(['now','soon','later'].includes(x.n.priority)?x.n.priority:null)}
@@ -332,7 +342,7 @@ function item(x,opts={}){
   return `<button class="item${opts.arrive?' arrive':''}" data-jump="${esc(x.key)}" data-project="${esc(x.p.project)}" data-from="${esc(opts.from||'')}">
     <span class="t">${dot(x.st)}<span>${esc(x.n.name)}</span>${prioOf(x)==='now'?'<span class="ptagnow">Now</span>':prioOf(x)==='soon'?'<span class="ptagsoon">Soon</span>':''}</span>
     ${x.n.note?`<span class="d">${esc(x.n.note)}</span>`:''}
-    <span class="w">${opts.tag?`<span class="ptag">${esc(nameOf(x.p))}</span>${x.path.length?'<span aria-hidden="true">·</span>':''}`:''}${x.path.length?`<span>${esc(x.path[x.path.length-1].split(' · ')[0])}</span>`:''}${opts.when?`<span class="when">${esc(opts.when)}</span>`:''}</span></button>`}
+    <span class="w">${opts.tag?`<span class="ptag">${esc(nameOf(x.p))}</span>${x.path.length?'<span aria-hidden="true">·</span>':''}`:''}${x.path.length?`<span>${esc(x.path[x.path.length-1].split(' · ')[0])}</span>`:''}${(()=>{const w=opts.when||(timesOf(itemId(x))?ago(timesOf(itemId(x)).updated):'');return w?`<span class="when" title="${esc(timesOf(itemId(x))?'Added '+dt(timesOf(itemId(x)).added)+' · last change '+dt(timesOf(itemId(x)).updated):'')}">${esc(w)}</span>`:''})()}</span></button>`}
 function limited(id,list,fn,n=6){const all=showAll.has(id),shown=all?list:list.slice(0,n);
   return shown.map(fn).join('')+(list.length>n?`<button class="more" data-more="${esc(id)}">${all?'Show fewer':'Show all '+list.length}</button>`:'')}
 
@@ -387,7 +397,7 @@ function nodeHTML(n,k,depth){
   return `<div class="node depth${depth} ${open?'open':''} ${target===key?'target':''}" data-key="${esc(key)}">
     <div class="row ${can?'can':''}" ${can?`tabindex="0" role="button" aria-expanded="${open}"`:''} style="padding-left:${pad}px">
       <span class="chev">${can?CHEV:''}</span>${dot(st)}
-      <span class="label"><span class="nm">${esc(n.name)}</span>${n.note?`<span class="note">${esc(n.note)}</span>`:''}${linksOf(n,data.projects.find(q=>q.project===k[0])||{project:k[0]})}</span>
+      <span class="label"><span class="nm">${esc(n.name)}</span>${n.note?`<span class="note">${esc(n.note)}</span>`:''}${!kids.length?stamp(k[0]+'|'+[...pathOfKey(k),n.name].join(' > ')):''}${linksOf(n,data.projects.find(q=>q.project===k[0])||{project:k[0]})}</span>
       <span class="meta">${prog(n)}${!kids.length&&st!=='done'?(()=>{const pj=data.projects.find(q=>q.project===k[0])||{project:k[0]};const x={n,p:pj,path:pathOfKey(k)};const v=prioOf(x);return `<button class="prio ${v?'p-'+v:''}" data-prio="${esc(itemId(x))}" data-cur="${v||''}" title="Click to set: Now, Soon, Later, none">${v?PRIO_WORD[v]:'Set priority'}</button>`})():''}${chip(st)}</span></div>
     ${(n.detail||st==='waiting'||st==='stuck')&&!kids.length?`<div class="detail d-${st}" style="margin-left:${pad+50}px">${head?`<strong>${head}</strong>`:''}${esc(n.detail||n.note||'')}${st==='waiting'||st==='stuck'?composerFor(data.projects.find(q=>q.project===k[0])||{project:k[0]},n,key):''}</div>`:(n.detail?`<div class="detail d-${st}" style="margin-left:${pad+50}px">${head?`<strong>${head}</strong>`:''}${esc(n.detail)}</div>`:'')}
     <div class="kids">${kids.map((x,i)=>nodeHTML(x,[...k,i],depth+1)).join('')}</div></div>`}
@@ -529,7 +539,7 @@ document.addEventListener('keydown',e=>{
 
 async function tick(){
   try{const r=await fetch('/api/status',{cache:'no-store'});const j=await r.json();lastFetch=Date.now();document.getElementById('pulse').classList.remove('off');
-    const body=JSON.stringify([j.projects,(j.history||[]).length,j.prefs,j.messages]);if(body!==lastBody){lastBody=body;data=j;safeRender()}}
+    const body=JSON.stringify([j.projects,(j.history||[]).length,j.prefs,j.messages,j.times]);if(body!==lastBody){lastBody=body;data=j;safeRender()}}
   catch(e){document.getElementById('pulse').classList.add('off');document.getElementById('pulsetxt').textContent='Not connected: start the Control Room server'}}
 setInterval(()=>{if(lastFetch&&!document.getElementById('pulse').classList.contains('off'))document.getElementById('pulsetxt').textContent='Live · checked '+Math.max(0,Math.round((Date.now()-lastFetch)/1000))+'s ago'},1000);
 tick().then(()=>{if(QS.get('open')==='all'){const p=data.projects.find(x=>x.project===view);if(p){walk(p,(n,path,k)=>{if((n.children||[]).length||n.detail||['waiting','stuck'].includes(stateOf(n)))openSet.add(keyOf(k))});render()}}if(QS.get('talk'))openComposer()});setInterval(tick,5000);setInterval(()=>{if(lastBody)safeRender()},30000);

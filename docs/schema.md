@@ -29,6 +29,7 @@ and keeps it current. The Control Room only reads it. Nothing else is needed: no
 | `priority` | Optional: `now`, `soon` or `later`. The owner's own choice in the Control Room always wins. |
 | `detail` | Plain words. For `waiting`: exactly what the owner should do. For `stuck`: why, and what happens next. |
 | `links` | Optional files the owner can open: `{"label": "...", "path": "<relative to the project folder>"}` or a full `https://` address. Videos play, pictures and pages open in the browser. Files under `keys/`, `.env`, `.git`, `.ssh` are always refused. |
+| `added` / `updated` | Optional dates (`2026-11-12` or `2026-11-12T14:30`, local time): when the task was put on the list and when it last changed. Without them the Control Room records the times it sees changes itself, and shows "Added ... · Last change ..." under every task. |
 | `newSince` | Short lines about what changed recently. |
 
 Write plain words. The reader is busy and may be tired: "Needs your go to publish on Thursday" beats "pending approval".

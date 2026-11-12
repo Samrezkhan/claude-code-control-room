@@ -185,6 +185,80 @@ def history(projects):
             return []
 
 
+
+def _iso(v):
+    """A date the project wrote itself ("2026-11-12" or "2026-11-12T14:30"), as a timestamp."""
+    import datetime
+    try:
+        s = str(v).strip().replace("Z", "")
+        fmt = "%Y-%m-%dT%H:%M" if "T" in s else "%Y-%m-%d"
+        return datetime.datetime.strptime(s[:16] if "T" in s else s[:10], fmt).timestamp()
+    except Exception:
+        return None
+
+
+def times(projects):
+    """When each task was added and when it last changed (state, note, detail or count), for the timeline labels."""
+    live = pathlib.Path(os.environ.get("CONTROL_ROOM_LIVE", str(pathlib.Path.home() / ".control-room")))
+    live.mkdir(parents=True, exist_ok=True)
+    tf, hf = live / "times.json", live / "history.jsonl"
+    with LOCK:
+        try:
+            t = json.loads(tf.read_text(encoding="utf-8"))
+        except Exception:
+            t = {}
+        first = {}
+        try:
+            for line in hf.read_text(encoding="utf-8").splitlines():
+                e = json.loads(line)
+                k = e["project"] + "|" + " > ".join(e.get("path", []) + [e.get("name", "")])
+                first.setdefault(k, e["at"])
+        except Exception:
+            pass
+        start = min(first.values()) if first else time.time()
+        now, dirty, fresh = time.time(), False, not t
+
+        def walk(p, nodes, path):
+            nonlocal dirty
+            for n in nodes or []:
+                kids = n.get("children") or []
+                k = p["project"] + "|" + " > ".join(path + [n.get("name", "")])
+                fp = "|".join(str(n.get(f, "")) for f in ("state", "note", "detail", "done", "total")) + "|%d" % len(kids)
+                r = t.get(k)
+                if r is None:
+                    if fresh:
+                        r = {"added": first.get(k, start), "est": True, "updated": first.get(k, start), "fp": fp}
+                    else:
+                        r = {"added": now, "est": False, "updated": now, "fp": fp}
+                    t[k], dirty = r, True
+                elif r.get("fp") != fp:
+                    r["fp"], r["updated"], dirty = fp, now, True
+                walk(p, kids, path + [n.get("name", "")])
+
+        for p in projects:
+            if p.get("_missing") or p.get("_error"):
+                continue
+            walk(p, p.get("nodes"), [])
+        if dirty:
+            tf.write_text(json.dumps(t), encoding="utf-8")
+        out = {k: {"added": v["added"], "est": v.get("est", False), "updated": v["updated"]} for k, v in t.items()}
+
+        def own(p, nodes, path):
+            for n in nodes or []:
+                k = p["project"] + "|" + " > ".join(path + [n.get("name", "")])
+                a, u = _iso(n.get("added")), _iso(n.get("updated"))
+                if k in out:
+                    if a:
+                        out[k]["added"], out[k]["est"] = a, False
+                    if u:
+                        out[k]["updated"] = max(u, out[k]["updated"]) if not a else u
+                own(p, n.get("children"), path + [n.get("name", "")])
+
+        for p in projects:
+            if not (p.get("_missing") or p.get("_error")):
+                own(p, p.get("nodes"), [])
+        return out
+
 def prefs_file():
     d = pathlib.Path(os.environ.get("CONTROL_ROOM_LIVE", str(pathlib.Path.home() / ".control-room")))
     d.mkdir(parents=True, exist_ok=True)
@@ -340,7 +414,7 @@ class H(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/api/status"):
             ps = collect(self.root)
-            self.send(200, json.dumps({"now": time.time(), "projects": ps, "history": history(ps),
+            self.send(200, json.dumps({"now": time.time(), "projects": ps, "history": history(ps), "times": times(ps),
                                        "prefs": read_prefs(), "messages": read_msgs()[-120:]}),
                       "application/json")
         elif self.path.startswith("/file?"):

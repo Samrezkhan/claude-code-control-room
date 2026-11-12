@@ -51,7 +51,7 @@ opens straight from the project's folder; videos play in the browser.
 
 **Search everything.** Press / and type: every task, note, file and message across all projects, or just the one you are in. Enter jumps straight to it.
 
-**History.** Every change of state is recorded, so Completed shows when each thing finished.
+**Timeline.** Every task shows when it was added and when it last changed ("Added Nov 11, 3:40 pm (18 h ago) · Last change 2 h ago"), so you can tell what moved after your last instruction. Completed shows when each thing finished.
 
 ---
 
