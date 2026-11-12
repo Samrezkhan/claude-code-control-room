@@ -54,6 +54,13 @@ def inbox(event, cwd):
                  or here.startswith(str(pathlib.Path(m["folder"]).resolve()).lower() + os.sep))]
     if not mine:
         return
+    # Scheduled-task runs share the project folder but are not the chat Sam talks to: never hand them his messages.
+    try:
+        with open(e.get("transcript_path") or "", encoding="utf-8", errors="ignore") as t:
+            if "<scheduled-task" in t.read(4000):
+                return
+    except Exception:
+        pass
     for m in mine:
         m["status"], m["note"] = "delivering", "In the open chat now"
     mf.write_text(json.dumps(ms[-300:]), encoding="utf-8")
