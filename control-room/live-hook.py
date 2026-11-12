@@ -14,7 +14,11 @@ START_NOTE = (
     "docs/status.json. Create it if missing and keep it current at every milestone: whenever something starts, "
     "finishes, gets stuck or waits on the owner, and before the session ends. Plain words; every stuck or waiting "
     "step says why and what happens next in 'detail'. Schema: %s (reading that one file is allowed). "
-    "Write only this project's own file." % (HERE.parent / "docs" / "schema.md")
+    "Write only this project's own file. Stamp 'updated' (local time, e.g. 2026-11-12T14:30) on every step you "
+    "change and 'added' on every new one. Whenever the owner gives a new instruction, rewrite the affected part of "
+    "the file in that same turn so it shows the new plan, not the old one: mark replaced work 'stopped' with a note "
+    "saying what replaced it (or remove it), add the new steps in order, and put what waits on their approval as "
+    "'waiting' with the later steps 'planned' and a note that they start after their yes." % (HERE.parent / "docs" / "schema.md")
 )
 try:
     e = json.load(sys.stdin)

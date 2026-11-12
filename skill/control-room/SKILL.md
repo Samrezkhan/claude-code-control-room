@@ -19,7 +19,8 @@ there from its own `docs/status.json`. The schema is in `docs/schema.md` of the 
 ## How
 
 1. A tree of `nodes`: workstreams as folders, tasks inside them. Keep names short and plain.
-2. Set `updated` (e.g. `2026-11-12T14:30`) on a task whenever its state, note or detail changes, and `added` when you put a new task on the list, so the owner can tell what moved after their last instruction.
+2. When the owner gives a new instruction, rewrite the affected part of the status in the same turn: replaced work becomes `stopped` with a note saying what replaced it (or is removed), the new steps go in order, the step that waits on their approval is `waiting`, and the steps after it are `planned` with a note that they start after their yes.
+3. Set `updated` (e.g. `2026-11-12T14:30`) on a task whenever its state, note or detail changes, and `added` when you put a new task on the list, so the owner can tell what moved after their last instruction.
 2. Every task has a `state`. Use `waiting` only when the owner must act, and say exactly what in `detail`.
    Use `stuck` only for a real block, and say why and what happens next.
 3. Add `links` for every output the owner can look at (a video, a picture, a page, a report), with paths relative
