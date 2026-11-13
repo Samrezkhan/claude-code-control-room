@@ -284,6 +284,11 @@ const chip=s=>`<span class="chip c-${s}">${ICON[s]}${WORD[s]}</span>`;
 const plural=(n,a,b)=>n+' '+(n===1?a:b);
 const nameOf=p=>p.title&&p.title.length<34?p.title:p.project;
 
+/* A task you have answered leaves "needs you" while its project's Claude has the message; it comes back when that
+   Claude has replied (changed or not), so the next priority can move up. */
+function markAnswered(){const live=(data.messages||[]).filter(m=>m.about&&(m.status==='queued'||m.status==='delivering'));if(!live.length)return;
+  data.projects.forEach(p=>{if(p._missing||p._error)return;walk(p,n=>{if((n.children||[]).length)return;
+    if((n.state==='waiting'||n.state==='stuck')&&live.some(m=>m.project===p.project&&m.about===n.name)){n._was=n.state;n.state='running';n.note='You answered. Its Claude is on it'+(n.note?' · was: '+n.note:'')}})})}
 function stateOf(n){if(n.state)return n.state;const ks=(n.children||[]).map(stateOf);for(const s of['stuck','waiting','running','stopped','planned'])if(ks.includes(s))return s;return ks.length?'done':'planned'}
 function walk(p,fn){const go=(nodes,path,keys)=>(nodes||[]).forEach((n,i)=>{const k=[...keys,i];fn(n,path,k);go(n.children,[...path,n.name],k)});go(p.nodes,[],[p.project])}
 const keyOf=k=>k.join('/');
@@ -542,7 +547,7 @@ document.addEventListener('keydown',e=>{
 
 async function tick(){
   try{const r=await fetch('/api/status',{cache:'no-store'});const j=await r.json();lastFetch=Date.now();document.getElementById('pulse').classList.remove('off');
-    const body=JSON.stringify([j.projects,(j.history||[]).length,j.prefs,j.messages,j.times]);if(body!==lastBody){lastBody=body;data=j;safeRender()}}
+    const body=JSON.stringify([j.projects,(j.history||[]).length,j.prefs,j.messages,j.times]);if(body!==lastBody){lastBody=body;data=j;markAnswered();safeRender()}}
   catch(e){document.getElementById('pulse').classList.add('off');document.getElementById('pulsetxt').textContent='Not connected: start the Control Room server'}}
 setInterval(()=>{if(lastFetch&&!document.getElementById('pulse').classList.contains('off'))document.getElementById('pulsetxt').textContent='Live · checked '+Math.max(0,Math.round((Date.now()-lastFetch)/1000))+'s ago'},1000);
 tick().then(()=>{if(QS.get('open')==='all'){const p=data.projects.find(x=>x.project===view);if(p){walk(p,(n,path,k)=>{if((n.children||[]).length||n.detail||['waiting','stuck'].includes(stateOf(n)))openSet.add(keyOf(k))});render()}}if(QS.get('talk'))openComposer()});setInterval(tick,5000);setInterval(()=>{if(lastBody)safeRender()},30000);
