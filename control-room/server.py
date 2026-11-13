@@ -272,7 +272,20 @@ def read_prefs():
         return {"order": [], "hidden": []}
 
 
-TOKEN = secrets.token_hex(16)  # new each start; only the page this server serves knows it
+def _token():
+    """The page's key. Kept in the live folder so a restart of the server does not lock out a page that is already
+    open (Sam, 2026-11-13: "Not sent: refused" after a restart). Only this PC's user can read that folder."""
+    f = live_dir() / "token.txt"
+    try:
+        t = f.read_text(encoding="utf-8").strip()
+        if len(t) == 32:
+            return t
+    except Exception:
+        pass
+    t = secrets.token_hex(16)
+    f.write_text(t, encoding="utf-8")
+    return t
+
 PORT = [9999]
 NAME = [""]
 MSG_LOCK = threading.Lock()
@@ -282,6 +295,9 @@ def live_dir():
     d = pathlib.Path(os.environ.get("CONTROL_ROOM_LIVE", str(pathlib.Path.home() / ".control-room")))
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+TOKEN = _token()
 
 
 def read_msgs():
@@ -339,11 +355,13 @@ def deliver_once(root):
             update_msg(m["id"], status="failed", reply="The claude program was not found on this PC.")
             continue
         sess = latest_session(proj["_folder"])
-        if sess and time.time() - sess.get("at", 0) < 600:
+        # A chat that is working right now picks the message up at its next step (the hook hands it over).
+        # An idle chat fires no hook until someone types in it, so after a short grace the message is
+        # delivered in the background instead of waiting for that.
+        if sess and sess.get("state") == "working" and time.time() - sess.get("at", 0) < 180:
             update_msg(m["id"], note="Goes into that project's open chat at its next step")
             continue
-        if sess and sess.get("state") == "working" and time.time() - sess.get("at", 0) < 180:
-            update_msg(m["id"], note="Waiting for that project's Claude to finish what it is doing")
+        if time.time() - m.get("at", 0) < 20:
             continue
         busy.add(m["project"])
         update_msg(m["id"], status="delivering", note="Its Claude is working on it", started=time.time())
