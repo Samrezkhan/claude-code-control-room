@@ -269,7 +269,10 @@ const ICON={
 const CHEV='<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M5 3l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const COLOR={done:'var(--done)',running:'var(--work)',waiting:'var(--need)',stuck:'var(--stuck)',stopped:'var(--hold)',planned:'var(--todo)'};
 
-const TOKEN='__CR_TOKEN__',OWNER='__CR_NAME__';
+let TOKEN='__CR_TOKEN__';
+/* If the server restarted with a new key, fetch the page again for the current key and retry once. */
+async function post(url,payload){const go=()=>fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-CR-Token':TOKEN},body:JSON.stringify(payload)});
+  let r=await go();if(r.status===403){try{const h=await (await fetch('/?_='+Date.now(),{cache:'no-store'})).text();const k=h.match(/let TOKEN='([0-9a-f]{32})'/);if(k&&k[1]!==TOKEN){TOKEN=k[1];r=await go()}}catch(e){}}return r},OWNER='__CR_NAME__';
 let data={projects:[],history:[],prefs:{order:[],hidden:[]},messages:[]},trail=[],showHidden=false,view='',openSet=new Set(),lastBody='',lastFetch=0,target=null,showAll=new Set();
 try{openSet=new Set(JSON.parse(localStorage.getItem('cr-open')||'[]'));view=localStorage.getItem('cr-view')||''}catch(e){}
 /* ?view=<project>&open=all&talk=1 opens a page directly (handy for links and screenshots) */
@@ -322,7 +325,7 @@ const byPrio=list=>[...list].sort((a,b)=>(rankP(a)-rankP(b))||(projRank(a)-projR
 function ordered(){const o=prefs().order,ps=[...data.projects],base=new Map(ps.map((p,i)=>[p.project,i]));return ps.sort((a,b)=>{const ia=o.indexOf(a.project),ib=o.indexOf(b.project);return (ia<0?1e6+base.get(a.project):ia)-(ib<0?1e6+base.get(b.project):ib)})}
 const visible=()=>ordered().filter(p=>!prefs().hidden.includes(p.project));
 const hiddenPs=()=>ordered().filter(p=>prefs().hidden.includes(p.project));
-async function savePrefs(next){next={order:next.order||[],hidden:next.hidden||[],prio:next.prio||prefs().prio};data.prefs=next;render();try{await fetch('/api/prefs',{method:'POST',headers:{'Content-Type':'application/json','X-CR-Token':TOKEN},body:JSON.stringify(next)})}catch(e){}}
+async function savePrefs(next){next={order:next.order||[],hidden:next.hidden||[],prio:next.prio||prefs().prio};data.prefs=next;render();try{await post('/api/prefs',next)}catch(e){}}
 function move(name,toIndex){const list=visible().map(p=>p.project).filter(x=>x!==name);list.splice(Math.max(0,Math.min(toIndex,list.length)),0,name);savePrefs({order:[...list,...hiddenPs().map(p=>p.project)],hidden:prefs().hidden})}
 function hide(name){if(view===name){view='';trail=[]}savePrefs({order:ordered().map(p=>p.project),hidden:[...prefs().hidden.filter(x=>x!==name),name]})}
 function unhide(name){savePrefs({order:ordered().map(p=>p.project),hidden:prefs().hidden.filter(x=>x!==name)})}
@@ -440,7 +443,7 @@ function guessProject(text){const t=text.toLowerCase().trim();let best=null,bl=0
   for(const p of data.projects){for(const nm of [p.project,p.title||''].filter(Boolean)){const w=nm.toLowerCase().split(/[:(\-]/)[0].trim();if(w.length>2&&t.includes(w)&&w.length>bl){best=p.project;bl=w.length}}}return best}
 async function send(project,about,text){
   if(!text.trim()||!project){toast('Pick a project and say something first.');return false}
-  try{const r=await fetch('/api/send',{method:'POST',headers:{'Content-Type':'application/json','X-CR-Token':TOKEN},body:JSON.stringify({project,about,text})});
+  try{const r=await post('/api/send',{project,about,text});
     if(!r.ok)throw new Error(await r.text());toast('Sent to '+project+'. Its Claude is picking it up.');lastBody='';tick();setTimeout(tick,1500);return true}
   catch(e){toast('Not sent: '+e.message);return false}}
 const MSTATE={queued:['Waiting to deliver','planned'],delivering:['Its Claude is working on it','running'],done:['Done','done'],failed:['Did not go through','stuck']};
