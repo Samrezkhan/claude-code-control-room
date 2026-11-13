@@ -195,6 +195,9 @@ h2 .count{color:var(--muted);font-weight:450}
 .item .d{font-size:13px;color:var(--ink-2);padding-left:24px}
 .item .w{font-size:12.5px;color:var(--muted);padding-left:24px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .ptag{font-weight:600;color:var(--ink-2)}
+.steps{margin-top:8px;border-left:2px solid var(--line);padding:2px 0 2px 12px;font-size:13.5px;color:var(--ink-2)}
+.stepsh{font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.step{display:flex;gap:10px;padding:2px 0;color:var(--muted)}.step .when{margin-left:0;min-width:74px;font-size:12.5px}.step.cur{color:var(--ink);font-weight:600}
 .ts{display:block;font-size:12.5px;color:var(--muted);margin-top:3px;font-variant-numeric:tabular-nums}
 .ts b{font-weight:600;color:var(--ink-2)}
 .when{margin-left:auto;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -455,7 +458,7 @@ const MSTATE={queued:['Waiting to deliver','planned'],delivering:['Its Claude is
 function messagesHTML(projectName){const allm=(data.messages||[]).filter(m=>!projectName||m.project===projectName).reverse();if(!allm.length)return'';const mid='msgs'+projectName,ms=showAll.has(mid)?allm.slice(0,60):allm.slice(0,5);
   return `<section><h2>Your messages <span class="count">${allm.length}</span></h2><div class="msgs">${ms.map(m=>{const st=MSTATE[m.status]||[m.status,'planned'];
     return `<div class="msg"><div class="meta2"><span class="chip c-${st[1]}">${ICON[st[1]]}${st[0]}</span>${projectName?'':`<span class="ptag">${esc(m.project)}</span>`}${m.about?`<span>about ${esc(m.about)}</span>`:''}<span>${esc(ago(m.at))}</span>${m.note?`<span>· ${esc(m.note)}</span>`:''}</div>
-    <div class="q">${esc(m.text)}</div>${m.reply?`<div class="a">${esc(m.reply)}</div>`:''}</div>`}).join('')}${allm.length>5?`<button class="more" data-more="${esc(mid)}">${showAll.has(mid)?'Show only the latest 5':'Show all '+allm.length+' messages'}</button>`:''}</div></section>`}
+    <div class="q">${esc(m.text)}</div>${m.status==='delivering'&&(m.steps||[]).length?`<div class="steps"><div class="stepsh">What its Claude is doing right now</div>${m.steps.slice(-5).map((x,i,arr)=>`<div class="step${i===arr.length-1?' cur':''}"><span class="when">${esc(ago(x.at))}</span>${esc(x.text)}</div>`).join('')}</div>`:''}${m.reply?`<div class="a">${esc(m.reply)}</div>`:''}</div>`}).join('')}${allm.length>5?`<button class="more" data-more="${esc(mid)}">${showAll.has(mid)?'Show only the latest 5':'Show all '+allm.length+' messages'}</button>`:''}</div></section>`}
 function openComposer(){const c=document.getElementById('composer'),sel=document.getElementById('gproj');
   sel.innerHTML='<option value="">Which project?</option>'+visible().map(p=>`<option value="${esc(p.project)}">${esc(nameOf(p))}</option>`).join('');
   if(view)sel.value=view;c.hidden=false;document.getElementById('gtext').focus()}
@@ -547,7 +550,7 @@ document.addEventListener('keydown',e=>{
 
 async function tick(){
   try{const r=await fetch('/api/status',{cache:'no-store'});const j=await r.json();lastFetch=Date.now();document.getElementById('pulse').classList.remove('off');
-    const body=JSON.stringify([j.projects,(j.history||[]).length,j.prefs,j.messages,j.times]);if(body!==lastBody){lastBody=body;data=j;markAnswered();safeRender()}}
+    const body=JSON.stringify([j.projects,(j.history||[]).length,j.prefs,j.messages,j.times,j.ver]);if(body!==lastBody){lastBody=body;if(window.__ver&&j.ver&&j.ver!==window.__ver&&![...document.querySelectorAll('textarea,input')].some(e=>e.value&&e.id!=='q')){location.reload();return}window.__ver=window.__ver||j.ver;data=j;markAnswered();safeRender()}}
   catch(e){document.getElementById('pulse').classList.add('off');document.getElementById('pulsetxt').textContent='Not connected: start the Control Room server'}}
 setInterval(()=>{if(lastFetch&&!document.getElementById('pulse').classList.contains('off'))document.getElementById('pulsetxt').textContent='Live · checked '+Math.max(0,Math.round((Date.now()-lastFetch)/1000))+'s ago'},1000);
 tick().then(()=>{if(QS.get('open')==='all'){const p=data.projects.find(x=>x.project===view);if(p){walk(p,(n,path,k)=>{if((n.children||[]).length||n.detail||['waiting','stuck'].includes(stateOf(n)))openSet.add(keyOf(k))});render()}}if(QS.get('talk'))openComposer()});setInterval(tick,5000);setInterval(()=>{if(lastBody)safeRender()},30000);

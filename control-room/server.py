@@ -374,19 +374,46 @@ def run_one(m, folder, claude, sess):
               "Act on it exactly as if the owner had typed it here, following this project's own rules. Then update "
               "docs/status.json. End with a reply in one to three plain sentences: it is shown in the Control Room."
               % (about, m["text"]))
-    args = [claude, "-p", prompt, "--output-format", "json"]
+    args = [claude, "-p", prompt, "--output-format", "stream-json", "--verbose"]
     if sess and sess.get("session") and sess["session"] != "unknown":
         args += ["--resume", sess["session"]]
     try:
-        r = subprocess.run(args, cwd=folder, capture_output=True, text=True, encoding="utf-8", errors="replace",
-                           timeout=3600, creationflags=0x08000000 if sys.platform == "win32" else 0)
-        reply, ok = "", r.returncode == 0
-        try:
-            j = json.loads(r.stdout)
-            reply = str(j.get("result") or "")
-            ok = ok and not j.get("is_error")
-        except Exception:
-            reply = (r.stdout or r.stderr or "").strip()[-1500:]
+        # Stream the run so the page can show what that Claude is doing, step by step, while it works.
+        pr = subprocess.Popen(args, cwd=folder, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                              encoding="utf-8", errors="replace",
+                              creationflags=0x08000000 if sys.platform == "win32" else 0)
+        reply, ok, steps, tail, t0 = "", False, [], [], time.time()
+        for line in pr.stdout:
+            tail = (tail + [line])[-20:]
+            if time.time() - t0 > 3600:
+                pr.kill()
+                raise subprocess.TimeoutExpired(args, 3600)
+            try:
+                ev = json.loads(line)
+            except Exception:
+                continue
+            if ev.get("type") == "assistant":
+                for c in (ev.get("message") or {}).get("content") or []:
+                    step = ""
+                    if c.get("type") == "text" and (c.get("text") or "").strip():
+                        step = c["text"].strip().splitlines()[0]
+                    elif c.get("type") == "tool_use":
+                        i = c.get("input") or {}
+                        step = str(i.get("description") or i.get("file_path") or i.get("pattern") or c.get("name") or "")
+                        if c.get("name") in ("Edit", "Write") and i.get("file_path"):
+                            step = "Editing " + pathlib.Path(str(i["file_path"])).name
+                        elif c.get("name") == "Read" and i.get("file_path"):
+                            step = "Reading " + pathlib.Path(str(i["file_path"])).name
+                    if step:
+                        steps = (steps + [{"at": time.time(), "text": step[:160]}])[-40:]
+                        update_msg(m["id"], steps=steps, note="Its Claude is working on it")
+            elif ev.get("type") == "result":
+                reply = str(ev.get("result") or "")
+                ok = not ev.get("is_error")
+        pr.wait()
+        ok = ok and pr.returncode == 0
+        if not reply:
+            reply = "".join(tail).strip()[-1500:]
         if not ok and ("authenticate" in reply.lower() or "login" in reply.lower() or "/login" in reply):
             update_msg(m["id"], status="queued", reply="", retry_at=time.time() + 120,
                        note="Claude on this PC needs a one-time sign-in (run claude, then /login); it sends by itself after")
@@ -433,7 +460,7 @@ class H(BaseHTTPRequestHandler):
         if self.path.startswith("/api/status"):
             ps = collect(self.root)
             self.send(200, json.dumps({"now": time.time(), "projects": ps, "history": history(ps), "times": times(ps),
-                                       "prefs": read_prefs(), "messages": read_msgs()[-120:]}),
+                                       "ver": int((HERE / "index.html").stat().st_mtime), "prefs": read_prefs(), "messages": read_msgs()[-120:]}),
                       "application/json")
         elif self.path.startswith("/file?"):
             self.serve_file()
