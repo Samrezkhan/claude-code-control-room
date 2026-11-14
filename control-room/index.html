@@ -231,6 +231,24 @@ h2 .count{color:var(--muted);font-weight:450}
 .detail{margin:0 18px 14px 0;padding:12px 14px;border-radius:9px;background:var(--hover);font-size:14.5px;color:var(--ink-2);white-space:pre-wrap;line-height:1.55}
 .detail.d-stuck{background:var(--stuck-bg);color:var(--ink)} .detail.d-waiting{background:var(--need-bg);color:var(--ink)}
 .detail strong{display:block;font-size:12.5px;font-weight:600;margin-bottom:2px}
+/* an opened group (a sub-project) reads as one panel: steps grouped by state, finished and on-hold folded */
+.node.depth0.open{background:var(--hover);box-shadow:inset 3px 0 0 var(--accent)}
+.node.depth0.open>.row{background:transparent}
+.node.depth0.open>.kids{padding:2px 16px 16px 30px}
+.grp{background:var(--page);border:1px solid var(--line);border-radius:10px;margin-top:10px;overflow:hidden}
+.grph{display:flex;align-items:center;gap:8px;padding:9px 14px;font-size:13px;font-weight:650;color:var(--ink-2);background:var(--rail);border-bottom:1px solid var(--line-2)}
+.grph .grpn{color:var(--muted);font-weight:500}
+.g-waiting>.grph{background:var(--need-bg);color:var(--need)} .g-stuck>.grph{background:var(--stuck-bg);color:var(--stuck)}
+.grp .node>.row{padding-left:14px!important;border-top:1px solid var(--line-2)}
+.grp>.node:first-of-type>.row,.grp>.fold>.node:first-of-type>.row{border-top:0}
+.grp .detail{margin-left:54px!important}
+.grp .node .node>.row{padding-left:38px!important}
+.fold>summary{cursor:pointer;padding:10px 14px;font-size:13.5px;color:var(--muted);list-style-position:inside}
+.fold[open]>summary{border-bottom:1px solid var(--line-2)}
+/* less noise: dates and the priority button show on the row you point at or have opened */
+.node .ts{display:none}
+.node.open>.row .ts,.node>.row:hover .ts,.node>.row:focus-visible .ts{display:block}
+.node>.row:not(:hover):not(:focus-within) .prio[data-cur=""]{visibility:hidden}
 .node.target>.row{background:var(--select);animation:land 1s ease-out}
 @keyframes land{from{background:var(--need-bg)}to{background:var(--select)}}
 .setup{padding:18px 20px;font-size:15px;color:var(--ink-2);border:1px dashed var(--line);border-radius:12px}
@@ -389,10 +407,10 @@ function card(p){
     <div class="pfoot"><span>${live||'Updated '+esc(ago(p._mtime))}</span></div></button>`}
 
 const shownFirst={};
-function doFirst(ps,scope){const open=[];ps.forEach(p=>{if(!p._missing&&!p._error)open.push(...leafs(p).filter(x=>['waiting','stuck'].includes(x.st)||prioOf(x)==='now'))});
+function doFirst(ps,scope){const open=[];ps.forEach(p=>{if(!p._missing&&!p._error)open.push(...leafs(p).filter(x=>x.st==='waiting'||prioOf(x)==='now'))});
   const top=byPrio(open).filter(x=>prioOf(x)!=='later'&&x.st!=='done').slice(0,3);if(!top.length)return'';
   const before=shownFirst[scope]||null,ids=top.map(itemId);shownFirst[scope]=ids;
-  return `<section><h2>Do these first <span class="count">${scope?'in this project, by priority':'from your top project and anything marked Now'}</span></h2><div class="first">${top.map(x=>item(x,{tag:!scope,from:'Do these first',arrive:before&&!before.includes(itemId(x))})).join('')}</div></section>`}
+  return `<section><h2>Needs you <span class="count">${scope?'in this project':'across your projects, plus anything you marked Now'}</span></h2><div class="first">${top.map(x=>item(x,{tag:!scope,from:'Do these first',arrive:before&&!before.includes(itemId(x))})).join('')}</div></section>`}
 function home(){
   const ps=visible();let need=0,stuck=0,run=0;ps.forEach(p=>{const c=counts(p);need+=c.waiting;stuck+=c.stuck;run+=c.running});
   const lede=[need?`<strong>${plural(need,'thing needs','things need')} you.</strong>`:'<strong>Nothing needs you right now.</strong>',stuck?`${plural(stuck,'step is','steps are')} stuck.`:'Nothing is stuck.',`${plural(run,'job is','jobs are')} in progress.`].join(' ');
@@ -402,6 +420,19 @@ function home(){
   <section><h2>The board <span class="count">every project together</span></h2>${board(ps,'')}</section>${messagesHTML('')}`}
 
 function pathOfKey(k){const p=data.projects.find(q=>q.project===k[0]);const out=[];let ns=p?p.nodes:[];for(let i=1;i<k.length-1;i++){const n=(ns||[])[k[i]];if(!n)break;out.push(n.name);ns=n.children}return out}
+const unfold=new Set();
+document.addEventListener('toggle',e=>{const d=e.target;if(d&&d.dataset&&d.dataset.fold){d.open?unfold.add(d.dataset.fold):unfold.delete(d.dataset.fold)}},true);
+function kidsHTML(kids,k,depth){
+  const one=(x,i)=>nodeHTML(x,[...k,i],depth+1);
+  if(depth!==0||kids.length<3)return kids.map(one).join('');
+  const G=[['waiting','Needs you'],['stuck','Stuck'],['running','In progress'],['planned','Not started'],['stopped','On hold'],['done','Done']];
+  const by={};kids.forEach((x,i)=>{const s=stateOf(x);(by[s]=by[s]||[]).push([x,i])});
+  return G.filter(([s])=>by[s]).map(([s,w])=>{
+    const rows=by[s].map(([x,i])=>one(x,i)).join(''),fk=keyOf(k)+'#'+s;
+    const inside=by[s].some(([x,i])=>{const kk=keyOf([...k,i]);return openSet.has(kk)||(target&&String(target).indexOf(kk)===0)});
+    const fold=(s==='done'||s==='stopped')&&by[s].length>1;
+    return `<div class="grp g-${s}"><div class="grph">${dot(s)}<span>${w}</span><span class="grpn">${by[s].length}</span></div>`+
+      (fold?`<details class="fold" data-fold="${esc(fk)}" ${inside||unfold.has(fk)?'open':''}><summary>${by[s].length} ${s==='done'?'finished':'on hold'}: show</summary>${rows}</details>`:rows)+`</div>`}).join('')}
 function nodeHTML(n,k,depth){
   const st=stateOf(n),kids=n.children||[],key=keyOf(k),can=kids.length||n.detail||((st==='waiting'||st==='stuck')&&!kids.length),open=openSet.has(key),pad=18+depth*24;
   const head=st==='stuck'?'Why it is stuck, and what happens next':st==='waiting'?'What you need to do':'';
@@ -411,7 +442,7 @@ function nodeHTML(n,k,depth){
       <span class="label"><span class="nm">${esc(n.name)}</span>${n.note?`<span class="note">${esc(n.note)}</span>`:''}${!kids.length?stamp(k[0]+'|'+[...pathOfKey(k),n.name].join(' > ')):''}${linksOf(n,data.projects.find(q=>q.project===k[0])||{project:k[0]})}</span>
       <span class="meta">${prog(n)}${!kids.length&&st!=='done'?(()=>{const pj=data.projects.find(q=>q.project===k[0])||{project:k[0]};const x={n,p:pj,path:pathOfKey(k)};const v=prioOf(x);return `<button class="prio ${v?'p-'+v:''}" data-prio="${esc(itemId(x))}" data-cur="${v||''}" title="Click to set: Now, Soon, Later, none">${v?PRIO_WORD[v]:'Set priority'}</button>`})():''}${chip(st)}</span></div>
     ${(n.detail||st==='waiting'||st==='stuck')&&!kids.length?`<div class="detail d-${st}" style="margin-left:${pad+50}px">${head?`<strong>${head}</strong>`:''}${esc(n.detail||n.note||'')}${st==='waiting'||st==='stuck'?composerFor(data.projects.find(q=>q.project===k[0])||{project:k[0]},n,key):''}</div>`:(n.detail?`<div class="detail d-${st}" style="margin-left:${pad+50}px">${head?`<strong>${head}</strong>`:''}${esc(n.detail)}</div>`:'')}
-    <div class="kids">${kids.map((x,i)=>nodeHTML(x,[...k,i],depth+1)).join('')}</div></div>`}
+    <div class="kids">${kidsHTML(kids,k,depth)}</div></div>`}
 
 function project(p){
   const crumbs='';
