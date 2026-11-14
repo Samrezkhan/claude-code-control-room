@@ -129,3 +129,12 @@ python control-room/server.py --root examples/demo --name Alex
 ## License
 
 MIT. Use it, change it, ship it.
+
+## Laying a project out by sub-project
+
+Sam, 2026-11-15: each top-level group in `nodes` is one thing he thinks of by name (one site, one channel, one
+client), most important first, plus at most a few groups named "Whole project: ..." for work that spans them. When a
+group is opened the page shows its steps as one panel, grouped Needs you, Stuck, In progress, Not started, On hold,
+Done, with finished and on-hold steps folded. The top of the page ("Needs you") lists only steps in state `waiting`
+and anything he marked Now. So: a question for Sam is its own `waiting` step named "Needs you: ..."; `stuck` is only
+for work someone is trying to move and cannot; parked work is `stopped`; no script output or file names in a note.
