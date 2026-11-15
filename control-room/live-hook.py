@@ -18,7 +18,14 @@ START_NOTE = (
     "change and 'added' on every new one. Whenever the owner gives a new instruction, rewrite the affected part of "
     "the file in that same turn so it shows the new plan, not the old one: mark replaced work 'stopped' with a note "
     "saying what replaced it (or remove it), add the new steps in order, and put what waits on their approval as "
-    "'waiting' with the later steps 'planned' and a note that they start after their yes." % (HERE.parent / "docs" / "schema.md")
+    "'waiting' with the later steps 'planned' and a note that they start after their yes. "
+    "Lay the file out by sub-project: each top-level group is ONE thing the owner thinks of by name (one site, one "
+    "channel, one client, one product), most important first, plus at most a few groups for work that spans all of "
+    "them (name those 'Whole project: ...'). Inside a group keep the steps few: fold finished history into one "
+    "'done' line, and anything the owner must answer is its own step in state 'waiting' whose name starts 'Needs "
+    "you:'. Use 'stuck' only for work someone is actively trying to move and cannot; work parked on purpose is "
+    "'stopped' (shown as On hold), with the reason in its note. Never paste script output or file names into a note "
+    "or detail: say what it means in plain words." % (HERE.parent / "docs" / "schema.md")
 )
 try:
     e = json.load(sys.stdin)
