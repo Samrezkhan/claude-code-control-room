@@ -1,6 +1,6 @@
 """Claude Code hook: record whether a session is working, waiting for you, or finished, for the Control Room.
 
-    python dashboard/live-hook.py <working|waiting|finished>
+    python control-room/live-hook.py <working|waiting|finished>
 
 Reads the hook's JSON on stdin (cwd, session_id), writes ~/.control-room/<id>.json with the state and the
 time. No project content is read or written; the Control Room matches the cwd to a project folder.

@@ -21,8 +21,9 @@ already have.
 ## What you get
 
 **One sentence that answers the morning question.**
-*"3 things need you. 2 steps are stuck. 3 jobs are in progress."* Then **Do these first**: the three things that
-matter most right now, from your top project and anything you marked *Now*. Finish one and the next slides in.
+*"3 things need you. 2 steps are stuck. 3 jobs are in progress."* Then **Needs you**: up to three things waiting
+on your answer across all your projects, plus anything you marked *Now*, most important first. Finish one and the
+next slides in.
 
 **A live board for everything.** Three columns across every project: **Completed** (with when, newest first),
 **In progress**, and **Pending** (needs you, stuck, on hold, not started).
@@ -69,9 +70,23 @@ opens straight from the project's folder; videos play in the browser.
 1. **Each project describes itself.** Its own Claude keeps one small file, `docs/status.json`: a tree of what is
    done, running, waiting and stuck. ([schema](docs/schema.md))
 2. **Hooks report what Claude is doing**, in a tiny state file. No model calls.
-3. **The Control Room reads those files** and draws the page. It finds every folder you have ever opened Claude
-   Code in by itself. A project without a status file yet shows as "not set up yet" and fills in the first time
-   its chat runs.
+3. **The Control Room reads those files** and draws the page. It finds the folders you have opened Claude Code in
+   by itself, leaving out temporary ones (Temp, AppData, `node_modules`, worktrees) and your home folder. A folder
+   inside another listed project counts as part of that project, not as a project of its own. A project without a
+   status file yet shows as "not set up yet" and fills in the first time its chat runs.
+
+### Laying a project out by sub-project
+
+Each top-level group in a status file is one thing the owner thinks of by name (one site, one channel, one client),
+most important first, plus at most a few groups named "Whole project: ..." for work that spans them. When a group is
+opened, the page shows its steps as one panel grouped Needs you, Stuck, In progress, Not started, On hold, Done, with
+finished and on-hold steps folded. The top of the page (**Needs you**) lists only steps in state `waiting` and
+anything marked *Now*. So:
+
+- a question for the owner is its own `waiting` step, named "Needs you: ...";
+- `stuck` is only for work someone is trying to move and cannot;
+- work parked on purpose is `stopped` (shown as On hold), with the reason in its note;
+- notes use plain words: no script output or file names.
 
 Projects never see each other. Each chat writes only its own file; the page is the only place they sit side by
 side. A client project and a personal project can share the screen without sharing anything else.
@@ -89,7 +104,15 @@ python install.py --autostart --name "Your name"
 Then open **http://localhost:9999** (Chrome and Edge also take **http://control.localhost:9999**).
 
 - `install.py` adds five hooks to `~/.claude/settings.json` (a backup is written first). `--autostart` starts
-  the Control Room when you log in (Windows, macOS, Linux). `python install.py --uninstall` removes everything.
+  the Control Room when you log in (Windows, macOS, Linux). `python install.py --uninstall` removes the hooks and
+  the autostart. It leaves `~/.control-room/` (your messages, history, priorities and the page key), any copied
+  skill, and each project's `docs/status.json`; delete those by hand if you want them gone.
+- **If your projects sit side by side in one folder** (for example `~/Repos`), tell the Control Room so: set the
+  environment variable `CONTROL_ROOM_ROOT` to that folder, or start the server with `--root <that folder>`. Each
+  folder inside it then shows as its own project. Without it, opening Claude Code in the parent folder once makes
+  that parent a single project that swallows all the others.
+- **Each project's `docs/status.json` is a file in that project.** In a git repository it shows up as a change:
+  commit it, or add it to that project's `.gitignore`.
 - **Teach each project to keep its status:** copy `skill/control-room` into `~/.claude/skills/` (all projects) or
   a project's `.claude/skills/`. New sessions are also reminded by the hook. For a chat that was already
   running, just tell it: *"Set up the Control Room status for this project."*
@@ -106,11 +129,14 @@ python control-room/server.py --root examples/demo --name Alex
 ## Safety
 
 - The server listens on your own computer only (127.0.0.1). Nothing is uploaded anywhere.
-- Only the page the server itself serves can send messages or change settings: every request carries a key made
-  fresh at each start, so other websites open in your browser cannot use it.
-- The **Open** button serves only files inside that project's folder, and always refuses `keys/`, `.env`, `.git`,
-  `.ssh` and similar.
-- The hooks store only a state word, a folder path and a time.
+- Only the page the server itself serves can send messages or change settings: every request carries a key that
+  only that page is given, so other websites open in your browser cannot use it. The key is made the first time
+  the server starts and kept in `~/.control-room/token.txt`, so a page that is already open keeps working after a
+  restart. Delete that file to make a new key.
+- The **Open** button serves only files inside that project's folder, and always refuses `keys/`, `secrets/`,
+  `credentials/`, `.env`, `.git` and `.ssh`.
+- The hooks store only a state word, a folder path, the session's id and a time. The same hook also hands your
+  Control Room messages for that project to its open chat.
 
 ## Files
 
@@ -121,6 +147,7 @@ python control-room/server.py --root examples/demo --name Alex
 | `control-room/live-hook.py` | the Claude Code hook: working / waiting / finished, and hands messages to an open chat |
 | `control-room/reply.py` | lets a chat answer a message in the Control Room |
 | `control-room/install.py` | hooks and autostart, in and out |
+| `control-room/start.cmd`, `start.sh` | start the Control Room by hand, in the background, and open it |
 | `skill/control-room/SKILL.md` | the Claude Code skill that keeps a project's status current |
 | `docs/schema.md` | the status file, field by field |
 | `docs/how-it-was-built.md` | the decisions behind it |
@@ -129,12 +156,3 @@ python control-room/server.py --root examples/demo --name Alex
 ## License
 
 MIT. Use it, change it, ship it.
-
-## Laying a project out by sub-project
-
-Sam, 2026-11-15: each top-level group in `nodes` is one thing he thinks of by name (one site, one channel, one
-client), most important first, plus at most a few groups named "Whole project: ..." for work that spans them. When a
-group is opened the page shows its steps as one panel, grouped Needs you, Stuck, In progress, Not started, On hold,
-Done, with finished and on-hold steps folded. The top of the page ("Needs you") lists only steps in state `waiting`
-and anything he marked Now. So: a question for Sam is its own `waiting` step named "Needs you: ..."; `stuck` is only
-for work someone is trying to move and cannot; parked work is `stopped`; no script output or file names in a note.
