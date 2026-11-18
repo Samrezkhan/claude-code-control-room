@@ -23,7 +23,16 @@ def claude_projects_dir():
 SKIP_PARTS = {".claude", "appdata", "temp", "tmp", "node_modules", "worktrees"}
 
 
-def decode(encoded):
+def _subdirs(cur, cache):
+    """Child folders of cur, longest name first; listed once per scan (many encoded names share the same parents)."""
+    key = str(cur)
+    if key not in cache:
+        with os.scandir(cur) as it:
+            cache[key] = sorted((pathlib.Path(e.path) for e in it if e.is_dir()), key=lambda k: -len(k.name))
+    return cache[key]
+
+
+def decode(encoded, cache=None):
     """Turn Claude's encoded folder name (C--Users-me-projects-shop) back into a real path, by walking the disk."""
     m = re.match(r"^([A-Za-z])--(.*)$", encoded)
     if not m:
@@ -31,12 +40,14 @@ def decode(encoded):
     cur, rest = pathlib.Path(m.group(1) + ":/"), m.group(2)
     while rest:
         try:
-            kids = sorted((k for k in cur.iterdir() if k.is_dir()), key=lambda k: -len(k.name))
+            kids = _subdirs(cur, {} if cache is None else cache)
         except Exception:
             return None
         for k in kids:
             e = ENC(k.name)
             if rest == e or rest.startswith(e + "-"):
+                if k.name.lower() in SKIP_PARTS:
+                    return None  # usable() rejects it anyway; stop before listing huge folders like Temp
                 cur, rest = k, rest[len(e) + 1:]
                 break
         else:
@@ -45,11 +56,11 @@ def decode(encoded):
 
 
 def claude_folders():
-    out = []
+    out, cache = [], {}
     cp = claude_projects_dir()
     if cp.is_dir():
         for d in cp.iterdir():
-            p = decode(d.name) if d.is_dir() else None
+            p = decode(d.name, cache) if d.is_dir() else None
             if p and p.is_dir():
                 out.append(p)
     return out

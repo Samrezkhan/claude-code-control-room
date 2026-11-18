@@ -293,7 +293,8 @@ const COLOR={done:'var(--done)',running:'var(--work)',waiting:'var(--need)',stuc
 let TOKEN='__CR_TOKEN__';
 /* If the server restarted with a new key, fetch the page again for the current key and retry once. */
 async function post(url,payload){const go=()=>fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-CR-Token':TOKEN},body:JSON.stringify(payload)});
-  let r=await go();if(r.status===403){try{const h=await (await fetch('/?_='+Date.now(),{cache:'no-store'})).text();const k=h.match(/let TOKEN='([0-9a-f]{32})'/);if(k&&k[1]!==TOKEN){TOKEN=k[1];r=await go()}}catch(e){}}return r},OWNER='__CR_NAME__';
+  let r=await go();if(r.status===403){try{const h=await (await fetch('/?_='+Date.now(),{cache:'no-store'})).text();const k=h.match(/let TOKEN='([0-9a-f]{32})'/);if(k&&k[1]!==TOKEN){TOKEN=k[1];r=await go()}}catch(e){}}return r}
+let OWNER='__CR_NAME__';
 let data={projects:[],history:[],prefs:{order:[],hidden:[]},messages:[]},trail=[],showHidden=false,view='',openSet=new Set(),lastBody='',lastFetch=0,target=null,showAll=new Set();
 try{openSet=new Set(JSON.parse(localStorage.getItem('cr-open')||'[]'));view=localStorage.getItem('cr-view')||''}catch(e){}
 /* ?view=<project>&open=all&talk=1 opens a page directly (handy for links and screenshots) */
